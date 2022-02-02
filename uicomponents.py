@@ -108,6 +108,14 @@ class TabComponentEditableTabMixin(object):
             listener.titleChanged(event)
     
     def setText(self, text):
+        self.text = text
+
+    @property
+    def text(self):
+        return self.text_field.text
+
+    @text.setter
+    def text(self, text):
         self.text_field.text = text
 
     def setEditing(self, state):

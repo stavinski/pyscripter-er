@@ -1,7 +1,7 @@
-from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants
+from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants, JOptionPane
 from javax.swing.event import ChangeListener
 from java.awt import BorderLayout, Font
-from uicomponents import TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin
+from uicomponents import TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener
 from models import Script
 
 
@@ -39,10 +39,26 @@ You have no Python scripts created.<br/> Please use the add tab (+) button to cr
         title = 'New Script {}'.format(idx + 1)
         script = Script(self.extender, self.callbacks, self.helpers, title, True, '')
         new_tab = ScriptTabComponent(script)
+        new_tab.addCloseListener(ScriptTabbedPane.ScriptTabCloseCloseListener(self))
         new_panel = ScriptPanel(script)
         self.add(new_panel, idx)
         self.setTabComponentAt(idx, new_tab)
         self.selectedIndex = idx
+
+
+    class ScriptTabCloseCloseListener(TabComponentCloseListener):
+
+        def __init__(self, tabbedpane):
+            self.tabbed_pane = tabbedpane 
+
+        def tabClose(self, event):
+            result = JOptionPane.showConfirmDialog(None, 'Are you sure you want to close \'{}\' ?'.format(event.source.text), 
+                                                "Close Tab", 
+                                                JOptionPane.YES_NO_OPTION, 
+                                                JOptionPane.QUESTION_MESSAGE)
+            if result == JOptionPane.YES_OPTION:        
+                idx = self.tabbed_pane.indexOfTabComponent(event.source)
+                self.tabbed_pane.remove(idx)
 
 
     class TabsStateChanged(ChangeListener):
@@ -60,7 +76,7 @@ class ScriptTabComponent(TabComponentEditableTabMixin, TabComponentCloseableMixi
     def __init__(self, script):
         super(ScriptTabComponent, self).__init__()
         self.script = script
-        self.setText(self.script.title)
+        self.text = self.script.title
         self.close_button.font = Font('Dialog', Font.PLAIN, 16)
     
 
