@@ -1,8 +1,10 @@
-from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants, JOptionPane
+from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants, JOptionPane, GroupLayout, JCheckBox
 from javax.swing.event import ChangeListener
+from javax.swing.LayoutStyle.ComponentPlacement import RELATED, UNRELATED
 from java.awt import BorderLayout, Font
 from uicomponents import TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener
 from models import Script
+from utils import bytearray_to_string
 
 
 class ScriptTabbedPane(JTabbedPane):
@@ -37,10 +39,11 @@ You have no Python scripts created.<br/> Please use the add tab (+) button to cr
     def add_clicked(self, event):
         idx = self.tabCount - 1
         title = 'New Script {}'.format(idx + 1)
-        script = Script(self.extender, self.callbacks, self.helpers, title, True, '')
+        script = Script(self.extender, self.callbacks, self.helpers, title, True, '# hello world')
         new_tab = ScriptTabComponent(script)
+        new_tab.tabbed_pane = self
         new_tab.addCloseListener(ScriptTabbedPane.ScriptTabCloseCloseListener(self))
-        new_panel = ScriptPanel(script)
+        new_panel = ScriptPanel(script, self.callbacks)
         self.add(new_panel, idx)
         self.setTabComponentAt(idx, new_tab)
         self.selectedIndex = idx
@@ -82,8 +85,60 @@ class ScriptTabComponent(TabComponentEditableTabMixin, TabComponentCloseableMixi
 
 class ScriptPanel(JPanel):
 
-    def __init__(self, script):
+    def __init__(self, script, callbacks):
         self.script = script
+        self.layout = GroupLayout(self)
+        self.setLayout(self.layout)
+        self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed)
+        self.scriptLabel = JLabel('Script Content:')
+        self.scriptText = callbacks.createTextEditor()
+        self.scriptText.text = script.content
+        self.compileButton = JButton('Compile', actionPerformed=self.compile)
+        self.outputLabel = JLabel('Output:')
+        self.outputText = callbacks.createTextEditor()
+        self.outputText.editable = False
+        self.clearOutputButton = JButton('Clear', actionPerformed=self.clear_output)
+
+        self.layout.autoCreateGaps = True
+        self.layout.autoCreateContainerGaps = True
+        self.layout.setHorizontalGroup(self.layout.createParallelGroup()
+                                            .addGroup(self.layout.createSequentialGroup()
+                                                .addComponent(self.enabledCheckbox)
+                                                .addPreferredGap(UNRELATED)
+                                            )
+                                            .addGroup(self.layout.createParallelGroup()
+                                              .addComponent(self.scriptLabel)
+                                              .addComponent(self.scriptText.getComponent())
+                                              .addComponent(self.compileButton)
+                                              .addComponent(self.outputLabel)
+                                              .addComponent(self.outputText.getComponent())
+                                              .addComponent(self.clearOutputButton)  
+                                            )
+                                        )
+
+        self.layout.setVerticalGroup(self.layout.createSequentialGroup()
+                                            .addGroup(self.layout.createParallelGroup()
+                                                .addComponent(self.enabledCheckbox)
+                                            )
+                                            .addGroup(self.layout.createSequentialGroup()
+                                                .addComponent(self.scriptLabel)
+                                                .addComponent(self.scriptText.getComponent())
+                                                .addComponent(self.compileButton)
+                                                .addComponent(self.outputLabel)
+                                                .addComponent(self.outputText.getComponent())  
+                                                .addComponent(self.clearOutputButton) 
+                                            )
+                                        )
+
+    def enabled_changed(self, event):
+        self.script.enabled = self.enabledCheckbox.isSelected()
+
+    def clear_output(self, event):
+        self.outputText.text = ''
+
+    def compile(self, event):
+        self.script.content = bytearray_to_string(self.scriptText.text)
+        self.script.compile(self.outputText)
 
 
 class Gui(object):

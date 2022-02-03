@@ -1,5 +1,9 @@
 
 
+from select import select
+import traceback
+
+
 class ObservableCollection(object):
     
     ITEM_ADDED = 2
@@ -63,8 +67,12 @@ class Script(object):
         self.helpers = helpers
         self.extender = extender
 
-    def compile(self):
-        compile(self.content, '<string>', 'exec', optimize=1)
+    def compile(self, output):
+        try:
+            output.text = ''
+            compile(self.content, '<string>', 'exec')
+        except:
+            output.text = traceback.format_exc()
 
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo, macroItems=[]):
         if not self.enabled:
