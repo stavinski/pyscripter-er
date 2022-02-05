@@ -3,6 +3,14 @@
 from select import select
 import traceback
 
+DEFAULT_SCRIPT = '''
+from pyscripterer import BaseScript as Script
+
+args = [extender, callbacks, helpers, toolFlag, messageIsRequest, messageInfo, macroItems]
+
+script = Script(*args)
+script.help()
+'''
 
 class ObservableCollection(object):
     
@@ -53,29 +61,29 @@ class ScriptCollection(ObservableCollection):
         return self.scripts
 
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo, macroItems=[]):
-        # will pass onto inner list of Script instances
-        pass
+        for script in self.scripts:
+            script.processHttpMessage(toolFlag, messageIsRequest, messageInfo, macroItems)
 
 
 class Script(object):
 
-    def __init__(self, extender, callbacks, helpers, title, enabled, content):
+    def __init__(self, extender, callbacks, helpers, title, enabled=True, content=DEFAULT_SCRIPT):
         self.title = title
         self.enabled = enabled
-        self.content = content
         self.callbacks = callbacks
         self.helpers = helpers
         self.extender = extender
-
+        self.content = content
+        
     def compile(self, output):
         try:
             output.text = ''
-            compile(self.content, '<string>', 'exec')
+            self.code = compile(self.content, '<string>', 'exec')
         except:
             output.text = traceback.format_exc()
 
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo, macroItems=[]):
-        if not self.enabled:
+        if not self.enabled and self.code:
             return
         
         globals_ = {}
@@ -88,4 +96,4 @@ class Script(object):
                     'macroItems': macroItems
                     }
         
-        exec(self.script, globals_, locals_)
+        exec(self.code, globals_, locals_)

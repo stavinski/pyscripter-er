@@ -1,3 +1,4 @@
+from models import ScriptCollection
 
 class ScriptCollectionStore(object):
 
@@ -9,7 +10,7 @@ class ScriptCollectionStore(object):
     def restore(self):
         # convert from json into collection
         # self.callbacks.loadExtensionSetting(ScriptStore._SAVE_NAME)
-        pass
+        return ScriptCollection()
 
     def save(self, scripts):
         # convert from collection in to json

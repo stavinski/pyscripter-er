@@ -39,7 +39,7 @@ You have no Python scripts created.<br/> Please use the add tab (+) button to cr
     def add_clicked(self, event):
         idx = self.tabCount - 1
         title = 'New Script {}'.format(idx + 1)
-        script = Script(self.extender, self.callbacks, self.helpers, title, True, '# hello world')
+        script = Script(self.extender, self.callbacks, self.helpers, title)
         new_tab = ScriptTabComponent(script)
         new_tab.tabbed_pane = self
         new_tab.addCloseListener(ScriptTabbedPane.ScriptTabCloseCloseListener(self))
@@ -47,6 +47,7 @@ You have no Python scripts created.<br/> Please use the add tab (+) button to cr
         self.add(new_panel, idx)
         self.setTabComponentAt(idx, new_tab)
         self.selectedIndex = idx
+        self.scripts.add(script)
 
 
     class ScriptTabCloseCloseListener(TabComponentCloseListener):
