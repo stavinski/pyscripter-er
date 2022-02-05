@@ -11,7 +11,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, IExtensionStateListene
     def registerExtenderCallbacks(self, callbacks):
         self.callbacks = callbacks
         self.helpers = callbacks.helpers
-        self.script_store = ScriptCollectionStore(callbacks)
+        self.script_store = ScriptCollectionStore(callbacks, self.helpers, self)
         self.scripts = self.script_store.restore()
         self.gui = GUI(self, self.callbacks, self.helpers, self.scripts)
         

@@ -1,10 +1,7 @@
-
-
-from select import select
+from time import time
 import traceback
 
-DEFAULT_SCRIPT = '''
-from pyscripterer import BaseScript as Script
+DEFAULT_SCRIPT = '''from pyscripterer import BaseScript as Script
 
 args = [extender, callbacks, helpers, toolFlag, messageIsRequest, messageInfo, macroItems]
 
@@ -51,6 +48,12 @@ class ScriptCollection(ObservableCollection):
         self.scripts.remove(script)
         self._fireChangedEvent(ObservableCollection.ITEM_REMOVED, script)
 
+    def to_dict(self):
+        return {
+            'created_at': int(time()),
+            'scripts': [script.to_dict() for script in self.scripts] 
+        }
+
     def __getitem__(self, index):
         return self.scripts[index]
 
@@ -64,6 +67,13 @@ class ScriptCollection(ObservableCollection):
         for script in self.scripts:
             script.processHttpMessage(toolFlag, messageIsRequest, messageInfo, macroItems)
 
+    @classmethod
+    def from_dict(cls, val, callbacks, helpers, extender):
+        coll = ScriptCollection()
+        for script in val['scripts']:
+            coll.add(Script.from_dict(script, callbacks, helpers, extender))
+
+        return coll
 
 class Script(object):
 
@@ -74,9 +84,14 @@ class Script(object):
         self.helpers = helpers
         self.extender = extender
         self.content = content
+
+    def to_dict(self):
+        fields = ['title', 'enabled', 'content']
+        return { field: getattr(self, field) for field in fields}
         
     def compile(self, output):
         try:
+            self.code = None
             output.text = ''
             self.code = compile(self.content, '<string>', 'exec')
         except:
@@ -97,3 +112,12 @@ class Script(object):
                     }
         
         exec(self.code, globals_, locals_)
+    
+    @classmethod
+    def from_dict(cls, val, callbacks, helpers, extender):
+        return Script(extender, 
+            callbacks, 
+            helpers, 
+            val['title'], 
+            val['enabled'], 
+            val['content'])
