@@ -1,5 +1,5 @@
 from java.util import EventObject, EventListener
-from javax.swing import JButton, JPanel,JLabel, JTextField, SwingUtilities
+from javax.swing import JTextArea, JButton, JPanel,JLabel, JTextField, SwingUtilities
 from javax.swing.event import EventListenerList
 from java.awt.event import MouseAdapter, FocusListener, KeyEvent
 from java.awt import Color
@@ -189,3 +189,23 @@ class TabTextField(JTextField):
     # required to allow tab to grow while editing
     def isValidateRoot(self):
         return False
+
+
+class BurpUI():
+
+    @staticmethod
+    def _find_textarea(parent):
+        # keep searching down the tree till we find 
+        for child in parent.getComponents():
+            if isinstance(child, JTextArea):
+                return child
+            return BurpUI._find_textarea(child)
+
+        raise RuntimeError('Could not find JTextArea.')
+
+    @staticmethod
+    def get_textarea(editor):
+        # help retrieve the main editor JTextArea component from the built-in Burp ITextEditor returned from callbacks.createTextEditor()
+        # saves having to remember the component position in the arrays
+        component = editor.component
+        return BurpUI._find_textarea(component.getComponents()[1])

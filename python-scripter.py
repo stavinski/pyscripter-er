@@ -1,20 +1,19 @@
 from burp import IBurpExtender, ISessionHandlingAction, IExtensionStateListener, IHttpListener, ITab, IBurpExtenderCallbacks
-
 from scriptstore import ScriptCollectionStore
-from gui import Gui
+from gui import GUI
 
 import traceback
 
 IBurpExtenderCallbacks.TOOL_MACRO = 0
 
 class BurpExtender(IBurpExtender, ISessionHandlingAction, IExtensionStateListener, IHttpListener, ITab):
-        
+
     def registerExtenderCallbacks(self, callbacks):
         self.callbacks = callbacks
         self.helpers = callbacks.helpers
         self.script_store = ScriptCollectionStore(callbacks)
         self.scripts = self.script_store.restore()
-        self.gui = Gui(self, self.callbacks, self.helpers, self.scripts)
+        self.gui = GUI(self, self.callbacks, self.helpers, self.scripts)
         
         callbacks.setExtensionName("Python Scripter (modified)")
         callbacks.registerSessionHandlingAction(self)

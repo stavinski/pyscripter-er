@@ -1,8 +1,8 @@
 from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants, JOptionPane, GroupLayout, JCheckBox
-from javax.swing.event import ChangeListener
+from javax.swing.event import ChangeListener, DocumentListener
 from javax.swing.LayoutStyle.ComponentPlacement import RELATED, UNRELATED
 from java.awt import BorderLayout, Font
-from uicomponents import TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener
+from uicomponents import BurpUI, TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener
 from models import Script
 from utils import bytearray_to_string
 
@@ -83,7 +83,7 @@ class ScriptTabComponent(TabComponentEditableTabMixin, TabComponentCloseableMixi
         self.close_button.font = Font('Dialog', Font.PLAIN, 16)
     
 
-class ScriptPanel(JPanel):
+class ScriptPanel(JPanel, DocumentListener):
 
     def __init__(self, script, callbacks):
         self.script = script
@@ -91,12 +91,14 @@ class ScriptPanel(JPanel):
         self.setLayout(self.layout)
         self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed)
         self.scriptLabel = JLabel('Script Content:')
-        self.scriptText = callbacks.createTextEditor()
-        self.scriptText.text = script.content
+        self.scriptEditor = callbacks.createTextEditor()
+        self.scriptEditor.text = script.content
+        self.scriptText = self.scriptEditor.component
         self.compileButton = JButton('Compile', actionPerformed=self.compile)
         self.outputLabel = JLabel('Output:')
-        self.outputText = callbacks.createTextEditor()
-        self.outputText.editable = False
+        self.outputEditor = callbacks.createTextEditor()
+        self.outputEditor.editable = False
+        self.outputText = self.outputEditor.component
         self.clearOutputButton = JButton('Clear', actionPerformed=self.clear_output)
 
         self.layout.autoCreateGaps = True
@@ -108,10 +110,10 @@ class ScriptPanel(JPanel):
                                             )
                                             .addGroup(self.layout.createParallelGroup()
                                               .addComponent(self.scriptLabel)
-                                              .addComponent(self.scriptText.getComponent())
+                                              .addComponent(self.scriptText)
                                               .addComponent(self.compileButton)
                                               .addComponent(self.outputLabel)
-                                              .addComponent(self.outputText.getComponent())
+                                              .addComponent(self.outputText)
                                               .addComponent(self.clearOutputButton)  
                                             )
                                         )
@@ -122,26 +124,40 @@ class ScriptPanel(JPanel):
                                             )
                                             .addGroup(self.layout.createSequentialGroup()
                                                 .addComponent(self.scriptLabel)
-                                                .addComponent(self.scriptText.getComponent())
+                                                .addComponent(self.scriptText)
                                                 .addComponent(self.compileButton)
                                                 .addComponent(self.outputLabel)
-                                                .addComponent(self.outputText.getComponent())  
+                                                .addComponent(self.outputText)  
                                                 .addComponent(self.clearOutputButton) 
                                             )
                                         )
+
+        BurpUI.get_textarea(self.scriptEditor).document.addDocumentListener(self)
 
     def enabled_changed(self, event):
         self.script.enabled = self.enabledCheckbox.isSelected()
 
     def clear_output(self, event):
-        self.outputText.text = ''
+        self.outputEditor.text = ''
 
     def compile(self, event):
-        self.script.content = bytearray_to_string(self.scriptText.text)
-        self.script.compile(self.outputText)
+        self.script.content = bytearray_to_string(self.scriptEditor.text)
+        self.script.compile(self.outputEditor)
+
+    def changedUpdate(self, event):
+        pass
+
+    def insertUpdate(self, event):
+        self._can_compile(event)
+    
+    def removeUpdate(self, event):
+        self._can_compile(event)
+
+    def _can_compile(self, event):
+        self.compileButton.enabled = event.document.length > 0
 
 
-class Gui(object):
+class GUI(object):
     
     def __init__(self, extender, callbacks, helpers, scripts):
         self.panel = JPanel()
