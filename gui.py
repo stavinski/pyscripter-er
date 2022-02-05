@@ -91,11 +91,11 @@ class ScriptPanel(JPanel, DocumentListener):
         self.layout = GroupLayout(self)
         self.setLayout(self.layout)
         self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed)
-        self.scriptLabel = JLabel('Script Content:')
+        self.scriptLabel = JLabel('Content:')
         self.scriptEditor = callbacks.createTextEditor()
         self.scriptEditor.text = script.content
         self.scriptText = self.scriptEditor.component
-        self.compileButton = JButton('Compile', actionPerformed=self.compile)
+        self.compileButton = JButton('Compile', actionPerformed=self.compile, enabled=False)
         self.outputLabel = JLabel('Output:')
         self.outputEditor = callbacks.createTextEditor()
         self.outputEditor.editable = False
@@ -134,6 +134,7 @@ class ScriptPanel(JPanel, DocumentListener):
                                         )
 
         BurpUI.get_textarea(self.scriptEditor).document.addDocumentListener(self)
+        self.compile(None)
 
     def enabled_changed(self, event):
         self.script.enabled = self.enabledCheckbox.isSelected()
@@ -144,9 +145,10 @@ class ScriptPanel(JPanel, DocumentListener):
     def compile(self, event):
         self.script.content = bytearray_to_string(self.scriptEditor.text)
         self.script.compile(self.outputEditor)
+        self.compileButton.enabled = False
 
     def changedUpdate(self, event):
-        pass
+        self._can_compile(event)
 
     def insertUpdate(self, event):
         self._can_compile(event)
@@ -155,7 +157,9 @@ class ScriptPanel(JPanel, DocumentListener):
         self._can_compile(event)
 
     def _can_compile(self, event):
-        self.compileButton.enabled = event.document.length > 0
+        self.compileButton.enabled = False
+        if event.document.length > 0:
+            self.compileButton.enabled = self.script.content != bytearray_to_string(self.scriptEditor.text)
 
 
 class GUI(object):
