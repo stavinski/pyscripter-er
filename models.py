@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from time import time
 import traceback
 
@@ -17,11 +18,13 @@ class ObservableCollection(object):
     def __init__(self):
         self.listeners = []
 
+    @abstractmethod
     def add(self, obj):  # implemented by subclass
-        pass
+        raise NotImplementedError()
 
+    @abstractmethod
     def remove(self, obj):  # implemented by subclass
-        pass
+        raise NotImplementedError()
 
     def add_listener(self, listener):
         self.listeners.append(listener)
@@ -54,6 +57,10 @@ class ScriptCollection(ObservableCollection):
             'scripts': [script.to_dict() for script in self.scripts] 
         }
 
+    def from_dict(self, val, callbacks, helpers, extender):
+        for script in val['scripts']:
+            self.add(Script.from_dict(script, callbacks, helpers, extender))
+
     def __getitem__(self, index):
         return self.scripts[index]
 
@@ -67,13 +74,6 @@ class ScriptCollection(ObservableCollection):
         for script in self.scripts:
             script.processHttpMessage(toolFlag, messageIsRequest, messageInfo, macroItems)
 
-    @classmethod
-    def from_dict(cls, val, callbacks, helpers, extender):
-        coll = ScriptCollection()
-        for script in val['scripts']:
-            coll.add(Script.from_dict(script, callbacks, helpers, extender))
-
-        return coll
 
 class Script(object):
 
@@ -84,6 +84,7 @@ class Script(object):
         self.helpers = helpers
         self.extender = extender
         self.content = content
+        self._compiled_content = content
 
     def to_dict(self):
         fields = ['title', 'enabled', 'content']
@@ -94,6 +95,7 @@ class Script(object):
             self.code = None
             output.text = ''
             self.code = compile(self.content, '<string>', 'exec')
+            self._compiled_content = self.content
         except:
             output.text = traceback.format_exc()
 
@@ -113,6 +115,10 @@ class Script(object):
         
         exec(self.code, globals_, locals_)
     
+    @property
+    def requires_compile(self):
+        return self.content != self._compiled_content
+
     @classmethod
     def from_dict(cls, val, callbacks, helpers, extender):
         return Script(extender, 

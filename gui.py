@@ -2,8 +2,8 @@ from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants, JO
 from javax.swing.event import ChangeListener, DocumentListener
 from javax.swing.LayoutStyle.ComponentPlacement import RELATED, UNRELATED
 from java.awt import BorderLayout, Font
-from uicomponents import BurpUI, TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener
-from models import Script
+from uicomponents import BurpUI, TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener, TabComponentTitleChangedListener
+from models import ObservableCollection, Script, ScriptCollection
 from utils import bytearray_to_string
 
 
@@ -22,6 +22,7 @@ You have no Python scripts created.<br/> Please use the add tab (+) button to cr
         self.helpers = helpers
 
         self.addChangeListener(ScriptTabbedPane.TabsStateChanged())
+        self.scripts.add_listener(self)
         self.create_add_tab()
 
     def create_add_tab(self):
@@ -40,20 +41,30 @@ You have no Python scripts created.<br/> Please use the add tab (+) button to cr
         idx = self.tabCount - 1
         title = 'New Script {}'.format(idx + 1)
         script = Script(self.extender, self.callbacks, self.helpers, title)
+        self.scripts.add(script)
+
+    def create_script_tab(self, script, idx):
         new_tab = ScriptTabComponent(script)
         new_tab.tabbed_pane = self
-        new_tab.addCloseListener(ScriptTabbedPane.ScriptTabCloseCloseListener(self))
+        new_tab.addCloseListener(ScriptTabbedPane.ScriptTabCloseListener(self, self.scripts, script))
+        new_tab.addTitleChangedListener(ScriptTabbedPane.ScriptTabTabTitleChangedListener(script))
         new_panel = ScriptPanel(script, self.callbacks)
         self.add(new_panel, idx)
         self.setTabComponentAt(idx, new_tab)
         self.selectedIndex = idx
-        self.scripts.add(script)
+
+    def collection_changed(self, collection, type, script):
+        if type == ObservableCollection.ITEM_ADDED:
+            idx = self.tabCount - 1
+            self.create_script_tab(script, idx)
 
 
-    class ScriptTabCloseCloseListener(TabComponentCloseListener):
+    class ScriptTabCloseListener(TabComponentCloseListener):
 
-        def __init__(self, tabbedpane):
+        def __init__(self, tabbedpane, scripts, script):
             self.tabbed_pane = tabbedpane 
+            self.scripts = scripts
+            self.script = script
 
         def tabClose(self, event):
             result = JOptionPane.showConfirmDialog(None, 'Are you sure you want to close \'{}\' ?'.format(event.source.text), 
@@ -63,6 +74,15 @@ You have no Python scripts created.<br/> Please use the add tab (+) button to cr
             if result == JOptionPane.YES_OPTION:        
                 idx = self.tabbed_pane.indexOfTabComponent(event.source)
                 self.tabbed_pane.remove(idx)
+                self.scripts.remove(self.script)
+
+    class ScriptTabTabTitleChangedListener(TabComponentTitleChangedListener):
+
+        def __init__(self, script):
+            self.script = script
+
+        def titleChanged(self, event):
+            self.script.title = event.getTitle()
 
 
     class TabsStateChanged(ChangeListener):
@@ -143,23 +163,28 @@ class ScriptPanel(JPanel, DocumentListener):
         self.outputEditor.text = ''
 
     def compile(self, event):
-        self.script.content = bytearray_to_string(self.scriptEditor.text)
         self.script.compile(self.outputEditor)
         self.compileButton.enabled = False
 
     def changedUpdate(self, event):
+        self._update_content()
         self._can_compile(event)
 
     def insertUpdate(self, event):
+        self._update_content()
         self._can_compile(event)
     
     def removeUpdate(self, event):
+        self._update_content()
         self._can_compile(event)
+
+    def _update_content(self):
+        self.script.content = bytearray_to_string(self.scriptEditor.text)
 
     def _can_compile(self, event):
         self.compileButton.enabled = False
         if event.document.length > 0:
-            self.compileButton.enabled = self.script.content != bytearray_to_string(self.scriptEditor.text)
+            self.compileButton.enabled = self.script.requires_compile
 
 
 class GUI(object):

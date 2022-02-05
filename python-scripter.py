@@ -1,4 +1,5 @@
 from burp import IBurpExtender, ISessionHandlingAction, IExtensionStateListener, IHttpListener, ITab, IBurpExtenderCallbacks
+from models import ScriptCollection
 from scriptstore import ScriptCollectionStore
 from gui import GUI
 
@@ -12,14 +13,16 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, IExtensionStateListene
         self.callbacks = callbacks
         self.helpers = callbacks.helpers
         self.script_store = ScriptCollectionStore(callbacks, self.helpers, self)
-        self.scripts = self.script_store.restore()
+        self.scripts = ScriptCollection()
         self.gui = GUI(self, self.callbacks, self.helpers, self.scripts)
         
+        self.script_store.restore(self.scripts)
+
         callbacks.setExtensionName("Python Scripter (modified)")
         callbacks.registerSessionHandlingAction(self)
         callbacks.registerExtensionStateListener(self)
         callbacks.registerHttpListener(self)
-        callbacks.customizeUiComponent(self.getUiComponent())
+        # callbacks.customizeUiComponent(self.getUiComponent())
         callbacks.addSuiteTab(self)
 
     def getActionName(self):
