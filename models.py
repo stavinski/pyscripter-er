@@ -109,6 +109,7 @@ class ScriptCollection(ObservableCollection):
 class Script(JavaBean):
 
     def __init__(self, extender, callbacks, helpers, title, enabled=True, content=DEFAULT_SCRIPT):
+        super(Script, self).__init__()
         self.title = title
         self.enabled = enabled
         self.callbacks = callbacks
@@ -118,7 +119,6 @@ class Script(JavaBean):
         self._compiled_content = content
         self._compilation_error = ''
         self._is_compiled = False
-        super(Script, self).__init__()
 
     def to_dict(self):
         fields = ['title', 'enabled', 'content']
@@ -127,15 +127,14 @@ class Script(JavaBean):
     def compile(self):
         try:
             self.code = None
-            self.code = compile(self.content, '<string>', 'exec')
             self._compiled_content = self.content
+            self.code = compile(self.content, '<string>', 'exec')
             self.is_compiled = True
         except:
             self.is_compiled = False
-            old_val = self._compilation_error
             self._compilation_error = traceback.format_exc()
-            self.firePropertyChange(Script.Properties.COMPILATION_ERROR, old_val, self._compilation_error)
-
+            self.firePropertyChange(Script.Properties.COMPILATION_ERROR, '', self._compilation_error)
+            
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo, macroItems=[]):
         if not self.enabled and self.code:
             return

@@ -134,8 +134,9 @@ class ScriptOutputPanel(JPanel, PropertyChangeListener):
 
     def propertyChange(self, event):
         if event.propertyName == Script.Properties.IS_COMPILED:
-            self.errorEditor.text = ''
-        if event.propertyName == Script.Properties.COMPILATION_ERROR:
+             if event.newValue:
+                self.errorEditor.text = ''
+        elif event.propertyName == Script.Properties.COMPILATION_ERROR:
             self.errorEditor.text = event.newValue
             self.tabbedPane.selectedIndex = 1
 
