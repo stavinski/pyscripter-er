@@ -3,9 +3,10 @@ from javax.swing.event import ChangeListener, DocumentListener
 from javax.swing.LayoutStyle.ComponentPlacement import RELATED, UNRELATED
 from java.awt import BorderLayout, Font, Component
 from java.beans import PropertyChangeListener
+from org.python.core.util import StringUtil
 from uicomponents import BurpUI, TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener, TabComponentTitleChangedListener
 from models import ObservableCollection, Script
-from utils import bytearray_to_string
+from utils import EditorFileAdapter
 
 
 class ScriptTabbedPane(JTabbedPane):
@@ -140,6 +141,7 @@ class ScriptEditingPanel(JPanel, DocumentListener):
                                         )
         self.layout = editingLayout
         BurpUI.get_textarea(self.scriptEditor).document.addDocumentListener(self)
+        self.compile(None)
 
     def enabled_changed(self, event):
         self.script.enabled = self.enabledCheckbox.isSelected()
@@ -161,13 +163,12 @@ class ScriptEditingPanel(JPanel, DocumentListener):
         self._can_compile(event)
 
     def _update_content(self):
-        self.script.content = bytearray_to_string(self.scriptEditor.text)
+        self.script.content = StringUtil.fromBytes(self.scriptEditor.text)
 
     def _can_compile(self, event):
         self.compileButton.enabled = False
         if event.document.length > 0:
             self.compileButton.enabled = self.script.requires_compile
-
 
 
 class ScriptOutputPanel(JPanel, PropertyChangeListener):
@@ -177,15 +178,15 @@ class ScriptOutputPanel(JPanel, PropertyChangeListener):
         self.callbacks = callbacks
         self.script = script
         self.script.addPropertyChangeListener(self)
-
         self.tabbedPane = JTabbedPane()
         self._create_output_panel()
         self._create_error_panel()
-
         self.tabbedPane.addTab('Output', self.outputPanel)
         self.tabbedPane.addTab('Errors', self.errorPanel)
         self.layout = BorderLayout()
         self.add(self.tabbedPane, BorderLayout.CENTER)
+        self.script.stdout = EditorFileAdapter(self.outputEditor)
+        self.script.stderr = EditorFileAdapter(self.errorEditor)
 
     def clear_stderr(self, event):
         self.errorEditor.text = ''

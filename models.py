@@ -1,6 +1,8 @@
 from abc import abstractmethod
 from time import time
 from java.beans import PropertyChangeSupport, PropertyChangeEvent
+
+import sys
 import traceback
 
 DEFAULT_SCRIPT = '''from pyscripterer import BaseScript as Script
@@ -116,6 +118,9 @@ class Script(JavaBean):
         self.helpers = helpers
         self.extender = extender
         self.content = content
+        self.stderr = sys.stderr
+        self.stdout = sys.stdout
+        self._code = None
         self._compiled_content = content
         self._compilation_error = ''
         self._is_compiled = False
@@ -126,9 +131,9 @@ class Script(JavaBean):
         
     def compile(self):
         try:
-            self.code = None
+            self._code = None
             self._compiled_content = self.content
-            self.code = compile(self.content, '<string>', 'exec')
+            self._code = compile(self.content, '<string>', 'exec')
             self.is_compiled = True
         except:
             self.is_compiled = False
@@ -136,21 +141,25 @@ class Script(JavaBean):
             self.firePropertyChange(Script.Properties.COMPILATION_ERROR, '', self._compilation_error)
             
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo, macroItems=[]):
-        if not self.enabled and self.code:
-            return
-        
-        globals_ = {}
-        locals_  = {'extender': self.extender,
-                    'callbacks': self.callbacks,
-                    'helpers': self.helpers,
-                    'toolFlag': toolFlag,
-                    'messageIsRequest': messageIsRequest,
-                    'messageInfo': messageInfo,
-                    'macroItems': macroItems
-                    }
-        
-        exec(self.code, globals_, locals_)
-    
+        if self.enabled and self._code:
+            globals_ = {}
+            locals_  = {'extender': self.extender,
+                        'callbacks': self.callbacks,
+                        'helpers': self.helpers,
+                        'toolFlag': toolFlag,
+                        'messageIsRequest': messageIsRequest,
+                        'messageInfo': messageInfo,
+                        'macroItems': macroItems
+                        }
+
+            oldstderr = sys.stderr
+            oldstdout = sys.stdout
+            sys.stdout = self.stdout
+            sys.stderr = self.stderr
+            exec(self._code, globals_, locals_)
+            sys.stdout = oldstdout
+            sys.stderr = oldstderr
+
     @property
     def requires_compile(self):
         return self.content != self._compiled_content
