@@ -1,9 +1,10 @@
-from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants, JOptionPane, GroupLayout, JCheckBox
+from javax.swing import JTabbedPane, JPanel, JButton, JLabel, SwingConstants, JOptionPane, GroupLayout, JCheckBox, JSplitPane
 from javax.swing.event import ChangeListener, DocumentListener
 from javax.swing.LayoutStyle.ComponentPlacement import RELATED, UNRELATED
-from java.awt import BorderLayout, Font
+from java.awt import BorderLayout, Font, Component
+from java.beans import PropertyChangeListener
 from uicomponents import BurpUI, TabComponent, TabComponentEditableTabMixin, TabComponentCloseableMixin, TabComponentCloseListener, TabComponentTitleChangedListener
-from models import ObservableCollection, Script, ScriptCollection
+from models import ObservableCollection, Script
 from utils import bytearray_to_string
 
 
@@ -104,51 +105,120 @@ class ScriptTabComponent(TabComponentEditableTabMixin, TabComponentCloseableMixi
         self.close_button.font = Font('Dialog', Font.PLAIN, 16)
     
 
+class ScriptEditingPanel(JPanel):
+    pass
+
+
+class ScriptOutputPanel(JPanel, PropertyChangeListener):
+    
+    def __init__(self, callbacks, script):
+        super(ScriptOutputPanel, self).__init__()
+        self.callbacks = callbacks
+        self.script = script
+        self.script.addPropertyChangeListener(self)
+
+        self.tabbedPane = JTabbedPane()
+        self._create_output_panel()
+        self._create_error_panel()
+
+        self.tabbedPane.addTab('Output', self.outputPanel)
+        self.tabbedPane.addTab('Errors', self.errorPanel)
+        self.layout = BorderLayout()
+        self.add(self.tabbedPane, BorderLayout.CENTER)
+
+    def clear_stderr(self, event):
+        self.errorEditor.text = ''
+        
+    def clear_stdout(self, event):
+        self.outputEditor.text = ''
+
+    def propertyChange(self, event):
+        if event.propertyName == Script.Properties.IS_COMPILED:
+            self.errorEditor.text = ''
+        if event.propertyName == Script.Properties.COMPILATION_ERROR:
+            self.errorEditor.text = event.newValue
+            self.tabbedPane.selectedIndex = 1
+
+    def _create_output_panel(self):
+        self.outputPanel = JPanel()
+        self.outputEditor = self.callbacks.createTextEditor()
+        self.outputEditor.editable = False
+        self.outputText = self.outputEditor.component
+        self.clearOutputButton = JButton('Clear', actionPerformed=self.clear_stdout)
+
+        outputLayout = GroupLayout(self.outputPanel, autoCreateGaps=True, autoCreateContainerGaps=True)
+        outputLayout.setHorizontalGroup(outputLayout.createParallelGroup()
+                                            .addComponent(self.outputText)
+                                            .addComponent(self.clearOutputButton)  
+                                        )
+
+        outputLayout.setVerticalGroup(outputLayout.createSequentialGroup()
+                                            .addComponent(self.outputText)
+                                            .addComponent(self.clearOutputButton)   
+                                        )
+        self.outputPanel.layout = outputLayout
+        
+    def _create_error_panel(self):
+        self.errorPanel = JPanel()
+        self.errorEditor = self.callbacks.createTextEditor()
+        self.errorEditor.editable = False
+        self.errorText = self.errorEditor.component
+        self.clearErrorButton = JButton('Clear', actionPerformed=self.clear_stderr)
+
+        errorLayout = GroupLayout(self.errorPanel, autoCreateGaps=True, autoCreateContainerGaps=True)
+        errorLayout.setHorizontalGroup(errorLayout.createParallelGroup()
+                                            .addComponent(self.errorText)
+                                            .addComponent(self.clearErrorButton)  
+                                        )
+        errorLayout.setVerticalGroup(errorLayout.createSequentialGroup()
+                                            .addComponent(self.errorText)
+                                            .addComponent(self.clearErrorButton)   
+                                        )
+        self.errorPanel.layout = errorLayout
+
+
 class ScriptPanel(JPanel, DocumentListener):
 
     def __init__(self, script, callbacks):
         self.script = script
-        self.layout = GroupLayout(self)
-        self.setLayout(self.layout)
-        self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed)
+        self.layout = BorderLayout()
+        self.editingPanel = JPanel()
+        self.outputPanel = ScriptOutputPanel(callbacks, script)
+        self.splitPane = JSplitPane(JSplitPane.VERTICAL_SPLIT, dividerSize=10)
+
+        self.splitPane.topComponent = self.editingPanel
+        self.splitPane.bottomComponent = self.outputPanel
+
+        self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed, alignmentX=Component.LEFT_ALIGNMENT)
         self.scriptEditor = callbacks.createTextEditor()
         self.scriptEditor.text = script.content
         self.scriptText = self.scriptEditor.component
         self.compileButton = JButton('Compile', actionPerformed=self.compile, enabled=False)
-        self.outputLabel = JLabel('Output:')
-        self.outputEditor = callbacks.createTextEditor()
-        self.outputEditor.editable = False
-        self.outputText = self.outputEditor.component
-        self.clearOutputButton = JButton('Clear', actionPerformed=self.clear_output)
-
-        self.layout.autoCreateGaps = True
-        self.layout.autoCreateContainerGaps = True
-        self.layout.setHorizontalGroup(self.layout.createParallelGroup()
-                                            .addGroup(self.layout.createSequentialGroup()
+        
+        editingLayout = GroupLayout(self.editingPanel, autoCreateGaps=True, autoCreateContainerGaps=True)
+        editingLayout.setHorizontalGroup(editingLayout.createParallelGroup()
+                                            .addGroup(editingLayout.createSequentialGroup()
                                                 .addComponent(self.enabledCheckbox)
                                                 .addPreferredGap(UNRELATED)
                                             )
-                                            .addGroup(self.layout.createParallelGroup()
+                                            .addGroup(editingLayout.createParallelGroup()
                                               .addComponent(self.scriptText)
                                               .addComponent(self.compileButton)
-                                              .addComponent(self.outputLabel)
-                                              .addComponent(self.outputText)
-                                              .addComponent(self.clearOutputButton)  
                                             )
                                         )
 
-        self.layout.setVerticalGroup(self.layout.createSequentialGroup()
-                                            .addGroup(self.layout.createParallelGroup()
+        editingLayout.setVerticalGroup(editingLayout.createSequentialGroup()
+                                            .addGroup(editingLayout.createParallelGroup()
                                                 .addComponent(self.enabledCheckbox)
                                             )
-                                            .addGroup(self.layout.createSequentialGroup()
+                                            .addGroup(editingLayout.createSequentialGroup()
                                                 .addComponent(self.scriptText)
-                                                .addComponent(self.compileButton)
-                                                .addComponent(self.outputLabel)
-                                                .addComponent(self.outputText)  
-                                                .addComponent(self.clearOutputButton) 
+                                                .addComponent(self.compileButton) 
                                             )
                                         )
+        self.editingPanel.layout = editingLayout
+        
+        self.add(self.splitPane, BorderLayout.CENTER)
 
         BurpUI.get_textarea(self.scriptEditor).document.addDocumentListener(self)
         self.compile(None)
@@ -160,7 +230,7 @@ class ScriptPanel(JPanel, DocumentListener):
         self.outputEditor.text = ''
 
     def compile(self, event):
-        self.script.compile(self.outputEditor)
+        self.script.compile()
         self.compileButton.enabled = False
 
     def changedUpdate(self, event):

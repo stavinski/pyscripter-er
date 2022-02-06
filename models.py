@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from time import time
+from java.beans import PropertyChangeSupport, PropertyChangeEvent
 import traceback
 
 DEFAULT_SCRIPT = '''from pyscripterer import BaseScript as Script
@@ -35,6 +36,36 @@ class ObservableCollection(object):
     def _fireChangedEvent(self, type, obj):
         for listener in self.listeners:
             listener.collection_changed(self, type, obj)
+
+
+class JavaBean(object):
+
+    def __init__(self):
+        self._changeSupport = None
+
+    def addPropertyChangeListener(self, *args):
+        if not self._changeSupport:
+            self._changeSupport = PropertyChangeSupport(self)
+        self._changeSupport.addPropertyChangeListener(*args)
+
+    def removePropertyChangeListener(self, *args):
+        if self._changeSupport:
+            self._changeSupport.removePropertyChangeListener(*args)
+
+    def firePropertyChange(self, propertyName, oldValue, newValue):
+        if self._changeSupport:
+            event = PropertyChangeEvent(self, propertyName, oldValue, newValue)
+            self._changeSupport.firePropertyChange(event)
+
+    def getPropertyChangeListeners(self, *args):
+        if self._changeSupport:
+            return self._changeSupport.getPropertyChangeListeners(*args)
+        return []
+
+    def hasListeners(self, *args):
+        if self._changeSupport:
+            return self._changeSupport.hasListeners(*args)
+        return False
 
 
 class ScriptCollection(ObservableCollection):
@@ -75,7 +106,7 @@ class ScriptCollection(ObservableCollection):
             script.processHttpMessage(toolFlag, messageIsRequest, messageInfo, macroItems)
 
 
-class Script(object):
+class Script(JavaBean):
 
     def __init__(self, extender, callbacks, helpers, title, enabled=True, content=DEFAULT_SCRIPT):
         self.title = title
@@ -85,19 +116,25 @@ class Script(object):
         self.extender = extender
         self.content = content
         self._compiled_content = content
+        self._compilation_error = ''
+        self._is_compiled = False
+        super(Script, self).__init__()
 
     def to_dict(self):
         fields = ['title', 'enabled', 'content']
         return { field: getattr(self, field) for field in fields}
         
-    def compile(self, output):
+    def compile(self):
         try:
             self.code = None
-            output.text = ''
             self.code = compile(self.content, '<string>', 'exec')
             self._compiled_content = self.content
+            self.is_compiled = True
         except:
-            output.text = traceback.format_exc()
+            self.is_compiled = False
+            old_val = self._compilation_error
+            self._compilation_error = traceback.format_exc()
+            self.firePropertyChange(Script.Properties.COMPILATION_ERROR, old_val, self._compilation_error)
 
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo, macroItems=[]):
         if not self.enabled and self.code:
@@ -119,6 +156,20 @@ class Script(object):
     def requires_compile(self):
         return self.content != self._compiled_content
 
+    @property
+    def compilation_error(self):
+        return self._compile_error
+    
+    @property
+    def is_compiled(self):
+        return self._is_compiled
+
+    @is_compiled.setter
+    def is_compiled(self, val):
+        old_val = self._is_compiled
+        self._is_compiled = val
+        self.firePropertyChange(Script.Properties.IS_COMPILED, old_val, self._is_compiled)
+
     @classmethod
     def from_dict(cls, val, callbacks, helpers, extender):
         return Script(extender, 
@@ -127,3 +178,8 @@ class Script(object):
             val['title'], 
             val['enabled'], 
             val['content'])
+
+    class Properties:
+
+        COMPILATION_ERROR = 'compilation_error'
+        IS_COMPILED = 'is_compiled'
