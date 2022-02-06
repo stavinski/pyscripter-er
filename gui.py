@@ -105,8 +105,69 @@ class ScriptTabComponent(TabComponentEditableTabMixin, TabComponentCloseableMixi
         self.close_button.font = Font('Dialog', Font.PLAIN, 16)
     
 
-class ScriptEditingPanel(JPanel):
-    pass
+class ScriptEditingPanel(JPanel, DocumentListener):
+
+    def __init__(self, callbacks, script):
+        super(ScriptEditingPanel, self).__init__()
+        self.callbacks = callbacks
+        self.script = script
+        self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed, alignmentX=Component.LEFT_ALIGNMENT)
+        self.scriptEditor = callbacks.createTextEditor()
+        self.scriptEditor.text = script.content
+        self.scriptText = self.scriptEditor.component
+        self.compileButton = JButton('Compile', actionPerformed=self.compile, enabled=False)
+        
+        editingLayout = GroupLayout(self, autoCreateGaps=True, autoCreateContainerGaps=True)
+        editingLayout.setHorizontalGroup(editingLayout.createParallelGroup()
+                                            .addGroup(editingLayout.createSequentialGroup()
+                                                .addComponent(self.enabledCheckbox)
+                                                .addPreferredGap(UNRELATED)
+                                            )
+                                            .addGroup(editingLayout.createParallelGroup()
+                                              .addComponent(self.scriptText)
+                                              .addComponent(self.compileButton)
+                                            )
+                                        )
+
+        editingLayout.setVerticalGroup(editingLayout.createSequentialGroup()
+                                            .addGroup(editingLayout.createParallelGroup()
+                                                .addComponent(self.enabledCheckbox)
+                                            )
+                                            .addGroup(editingLayout.createSequentialGroup()
+                                                .addComponent(self.scriptText)
+                                                .addComponent(self.compileButton) 
+                                            )
+                                        )
+        self.layout = editingLayout
+        BurpUI.get_textarea(self.scriptEditor).document.addDocumentListener(self)
+
+    def enabled_changed(self, event):
+        self.script.enabled = self.enabledCheckbox.isSelected()
+
+    def compile(self, event):
+        self.script.compile()
+        self.compileButton.enabled = False
+
+    def changedUpdate(self, event):
+        self._update_content()
+        self._can_compile(event)
+
+    def insertUpdate(self, event):
+        self._update_content()
+        self._can_compile(event)
+    
+    def removeUpdate(self, event):
+        self._update_content()
+        self._can_compile(event)
+
+    def _update_content(self):
+        self.script.content = bytearray_to_string(self.scriptEditor.text)
+
+    def _can_compile(self, event):
+        self.compileButton.enabled = False
+        if event.document.length > 0:
+            self.compileButton.enabled = self.script.requires_compile
+
 
 
 class ScriptOutputPanel(JPanel, PropertyChangeListener):
@@ -178,81 +239,17 @@ class ScriptOutputPanel(JPanel, PropertyChangeListener):
         self.errorPanel.layout = errorLayout
 
 
-class ScriptPanel(JPanel, DocumentListener):
+class ScriptPanel(JPanel):
 
     def __init__(self, script, callbacks):
         self.script = script
         self.layout = BorderLayout()
-        self.editingPanel = JPanel()
+        self.editingPanel = ScriptEditingPanel(callbacks, script)
         self.outputPanel = ScriptOutputPanel(callbacks, script)
         self.splitPane = JSplitPane(JSplitPane.VERTICAL_SPLIT, dividerSize=10)
-
         self.splitPane.topComponent = self.editingPanel
         self.splitPane.bottomComponent = self.outputPanel
-
-        self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed, alignmentX=Component.LEFT_ALIGNMENT)
-        self.scriptEditor = callbacks.createTextEditor()
-        self.scriptEditor.text = script.content
-        self.scriptText = self.scriptEditor.component
-        self.compileButton = JButton('Compile', actionPerformed=self.compile, enabled=False)
-        
-        editingLayout = GroupLayout(self.editingPanel, autoCreateGaps=True, autoCreateContainerGaps=True)
-        editingLayout.setHorizontalGroup(editingLayout.createParallelGroup()
-                                            .addGroup(editingLayout.createSequentialGroup()
-                                                .addComponent(self.enabledCheckbox)
-                                                .addPreferredGap(UNRELATED)
-                                            )
-                                            .addGroup(editingLayout.createParallelGroup()
-                                              .addComponent(self.scriptText)
-                                              .addComponent(self.compileButton)
-                                            )
-                                        )
-
-        editingLayout.setVerticalGroup(editingLayout.createSequentialGroup()
-                                            .addGroup(editingLayout.createParallelGroup()
-                                                .addComponent(self.enabledCheckbox)
-                                            )
-                                            .addGroup(editingLayout.createSequentialGroup()
-                                                .addComponent(self.scriptText)
-                                                .addComponent(self.compileButton) 
-                                            )
-                                        )
-        self.editingPanel.layout = editingLayout
-        
         self.add(self.splitPane, BorderLayout.CENTER)
-
-        BurpUI.get_textarea(self.scriptEditor).document.addDocumentListener(self)
-        self.compile(None)
-
-    def enabled_changed(self, event):
-        self.script.enabled = self.enabledCheckbox.isSelected()
-
-    def clear_output(self, event):
-        self.outputEditor.text = ''
-
-    def compile(self, event):
-        self.script.compile()
-        self.compileButton.enabled = False
-
-    def changedUpdate(self, event):
-        self._update_content()
-        self._can_compile(event)
-
-    def insertUpdate(self, event):
-        self._update_content()
-        self._can_compile(event)
-    
-    def removeUpdate(self, event):
-        self._update_content()
-        self._can_compile(event)
-
-    def _update_content(self):
-        self.script.content = bytearray_to_string(self.scriptEditor.text)
-
-    def _can_compile(self, event):
-        self.compileButton.enabled = False
-        if event.document.length > 0:
-            self.compileButton.enabled = self.script.requires_compile
 
 
 class GUI(object):
