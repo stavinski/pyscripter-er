@@ -111,7 +111,6 @@ class ScriptPanel(JPanel, DocumentListener):
         self.layout = GroupLayout(self)
         self.setLayout(self.layout)
         self.enabledCheckbox = JCheckBox('Enabled', self.script.enabled, itemStateChanged=self.enabled_changed)
-        self.scriptLabel = JLabel('Content:')
         self.scriptEditor = callbacks.createTextEditor()
         self.scriptEditor.text = script.content
         self.scriptText = self.scriptEditor.component
@@ -130,7 +129,6 @@ class ScriptPanel(JPanel, DocumentListener):
                                                 .addPreferredGap(UNRELATED)
                                             )
                                             .addGroup(self.layout.createParallelGroup()
-                                              .addComponent(self.scriptLabel)
                                               .addComponent(self.scriptText)
                                               .addComponent(self.compileButton)
                                               .addComponent(self.outputLabel)
@@ -144,7 +142,6 @@ class ScriptPanel(JPanel, DocumentListener):
                                                 .addComponent(self.enabledCheckbox)
                                             )
                                             .addGroup(self.layout.createSequentialGroup()
-                                                .addComponent(self.scriptLabel)
                                                 .addComponent(self.scriptText)
                                                 .addComponent(self.compileButton)
                                                 .addComponent(self.outputLabel)

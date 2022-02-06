@@ -5,11 +5,15 @@ from gui import GUI
 
 import traceback
 
+__NAME__ = 'Multi-py'
+
+
 IBurpExtenderCallbacks.TOOL_MACRO = 0
 
 class BurpExtender(IBurpExtender, ISessionHandlingAction, IExtensionStateListener, IHttpListener, ITab):
 
     def registerExtenderCallbacks(self, callbacks):
+        print('Registering {}...'.format(__NAME__))
         self.callbacks = callbacks
         self.helpers = callbacks.helpers
         self.script_store = ScriptCollectionStore(callbacks, self.helpers, self)
@@ -18,12 +22,14 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, IExtensionStateListene
         
         self.script_store.restore(self.scripts)
 
-        callbacks.setExtensionName("Python Scripter (modified)")
+        callbacks.setExtensionName(__NAME__)
         callbacks.registerSessionHandlingAction(self)
         callbacks.registerExtensionStateListener(self)
         callbacks.registerHttpListener(self)
         # callbacks.customizeUiComponent(self.getUiComponent())
         callbacks.addSuiteTab(self)
+
+        print('{} has been successfully registered'.format(__NAME__))
 
     def getActionName(self):
         return 'Send to Python Scripter'
@@ -47,7 +53,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, IExtensionStateListene
         return
 
     def getTabCaption(self):
-        return 'Scripts'
+        return 'Python Scripts'
 
     def getUiComponent(self):
         return self.gui.build()
