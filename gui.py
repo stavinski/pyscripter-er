@@ -104,6 +104,8 @@ class ScriptTabComponent(TabComponentEditableTabMixin, TabComponentCloseableMixi
         self.script = script
         self.text = self.script.title
         self.close_button.font = Font('Dialog', Font.PLAIN, 16)
+        self.text_field.toolTipText = self.toolTipText = 'Double click to rename, Enter to confirm or Esc to cancel'
+
     
 
 class ScriptEditingPanel(JPanel, DocumentListener):
