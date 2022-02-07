@@ -156,9 +156,13 @@ class Script(JavaBean):
             oldstdout = sys.stdout
             sys.stdout = self.stdout
             sys.stderr = self.stderr
-            exec(self._code, globals_, locals_)
-            sys.stdout = oldstdout
-            sys.stderr = oldstderr
+            try:
+                exec(self._code, globals_, locals_)
+            except:
+                self.stderr.write(traceback.format_exc())
+            finally:
+                sys.stdout = oldstdout
+                sys.stderr = oldstderr
 
     @property
     def requires_compile(self):
