@@ -142,8 +142,8 @@ class Script(JavaBean):
             
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo, macroItems=[]):
         if self.enabled and self._code:
-            globals_ = {}
-            locals_  = {'extender': self.extender,
+            locals_ = {}
+            globals_  = {'extender': self.extender,
                         'callbacks': self.callbacks,
                         'helpers': self.helpers,
                         'toolFlag': toolFlag,
